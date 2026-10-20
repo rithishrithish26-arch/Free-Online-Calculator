@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101426">
+  <meta name="description" content="Free online calculator for everyday maths. Fast, simple and easy to use.">
+  <title>FreeCalc - Free Online Calculator</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px 14px;
+      font-family: Arial, sans-serif;
+      color: #fff;
+      background: linear-gradient(145deg, #101426, #202b4a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .app { width: 100%; max-width: 390px; }
+
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      margin: 0 0 6px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #aeb9d4;
+      margin: 0 0 24px;
+      font-size: 14px;
+    }
+
+    .calculator {
+      background: #171e32;
+      padding: 18px;
+      border-radius: 25px;
+      border: 1px solid #34405c;
+      box-shadow: 0 20px 50px #0005;
+    }
+
+    .display {
+      min-height: 112px;
+      padding: 15px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: flex-end;
+      overflow: hidden;
+    }
+
+    #expression {
+      color: #aeb9d4;
+      font-size: 17px;
+      min-height: 25px;
+      overflow-wrap: anywhere;
+    }
+
+    #result {
+      font-size: clamp(32px, 10vw, 44px);
+      font-weight: bold;
+      overflow-wrap: anywhere;
+      text-align: right;
+      max-width: 100%;
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      border: 0;
+      min-width: 0;
+      height: 62px;
+      border-radius: 17px;
+      background: #28334d;
+      color: white;
+      font-size: 21px;
+      font-weight: 600;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:active { transform: scale(.96); }
+    button.utility { background: #394663; }
+    button.operator { background: #344fc2; }
+    button.equals {
+      background: #26c6a5;
+      color: #101426;
+    }
+
+    .footer {
+      text-align: center;
+      color: #aeb9d4;
+      font-size: 12px;
+      margin-top: 18px;
+    }
+
+    button:focus-visible {
+      outline: 3px solid white;
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>✨ FreeCalc</h1>
+    <p class="subtitle">Your free everyday calculator</p>
+
+    <section class="calculator" aria-label="Calculator">
+      <div class="display" aria-live="polite">
+        <div id="expression">Ready to calculate</div>
+        <div id="result">0</div>
+      </div>
+
+      <div class="keys">
+        <button class="utility" data-action="clear">AC</button>
+        <button class="utility" data-action="backspace">⌫</button>
+        <button class="utility" data-action="percent">%</button>
+        <button class="operator" data-value="/">÷</button>
+
+        <button data-value="7">7</button>
+        <button data-value="8">8</button>
+        <button data-value="9">9</button>
+        <button class="operator" data-value="*">×</button>
+
+        <button data-value="4">4</button>
+        <button data-value="5">5</button>
+        <button data-value="6">6</button>
+        <button class="operator" data-value="-">−</button>
+
+        <button data-value="1">1</button>
+        <button data-value="2">2</button>
+        <button data-value="3">3</button>
+        <button class="operator" data-value="+">+</button>
+
+        <button class="utility" data-action="sign">+/-</button>
+        <button data-value="0">0</button>
+        <button data-action="decimal">.</button>
+        <button class="equals" data-action="equals">=</button>
+      </div>
+    </section>
+
+    <p class="footer">Free forever · No sign-up required</p>
+  </main>
+
+  <script>
+    const result = document.getElementById("result");
+    const expression = document.getElementById("expression");
+
+    let current = "0";
+    let stored = null;
+    let operator = null;
+    let fresh = false;
+    let justCalculated = false;
+
+    function show() {
+      result.textContent = current;
+    }
+
+    function number(value) {
+      if (fresh || justCalculated) {
+        current = value;
+        fresh = false;
+        justCalculated = false;
+      } else if (current === "0") {
+        current = value;
+      } else if (current === "-0") {
+        current = "-" + value;
+      } else if (current.replace("-", "").length < 15) {
+        current += value;
+      }
+      show();
+    }
+
+    function calculate(a, b, op) {
+      if (op === "+") return a + b;
+      if (op === "-") return a - b;
+      if (op === "*") return a * b;
+      if (op === "/") return b === 0 ? null : a / b;
+      return b;
+    }
+
+    function format(value) {
+      if (!Number.isFinite(value)) return "Error";
+      return String(Number(value.toPrecision(12)));
+    }
+
+    function chooseOperator(op) {
+      const value = Number(current);
+
+      if (operator && !fresh) {
+        const answer = calculate(stored, value, operator);
+        if (answer === null) {
+          current = "Cannot divide by zero";
+          result.textContent = current;
+          stored = null;
+          operator = null;
+          fresh = true;
+          justCalculated = false;
+          return;
+        }
+        current = format(answer);
+        show();
+      }
+
+      stored = Number(current);
+      operator = op;
+      expression.textContent = current + " " + op;
+      fresh = true;
+      justCalculated = false;
+    }
+
+    function equals() {
+      if (operator === null || fresh) return;
+
+      const a = stored;
+      const b = Number(current);
+      const op = operator;
+      const answer = calculate(a, b, op);
+
+      expression.textContent = a + " " + op + " " + b + " =";
+      current = answer === null ? "Cannot divide by zero" : format(answer);
+      result.textContent = current;
+
+      stored = null;
+      operator = null;
+      fresh = true;
+      justCalculated = true;
+    }
+
+    function clear() {
+      current = "0";
+      stored = null;
+      operator = null;
+      fresh = false;
+      justCalculated = false;
+      expression.textContent = "Ready to calculate";
+      show();
+    }
+
+    function backspace() {
+      if (fresh || justCalculated) {
+        current = "0";
+        fresh = false;
+        justCalculated = false;
+      } else {
+        current = current.length > 1 ? current.slice(0, -1) : "0";
+        if (current === "-") current = "0";
+      }
+      show();
+    }
+
+    function percent() {
+      const n = Number(current);
+      if (!Number.isFinite(n)) return;
+      current = format(n / 100);
+      fresh = false;
+      justCalculated = false;
+      show();
+    }
+
+    function sign() {
+      const n = Number(current);
+      if (!Number.isFinite(n)) return;
+      current = format(-n);
+      fresh = false;
+      justCalculated = false;
+      show();
+    }
+
+    function decimal() {
+      if (fresh || justCalculated) {
+        current = "0.";
+        fresh = false;
+        justCalculated = false;
+      } else if (!current.includes(".") && current.length < 15) {
+        current += ".";
+      }
+      show();
+    }
+
+    document.querySelector(".keys").addEventListener("click", event => {
+      const button = event.target.closest("button");
+      if (!button) return;
+
+      if (button.dataset.value !== undefined) {
+        const value = button.dataset.value;
+        if ("0123456789".includes(value)) number(value);
+        else chooseOperator(value);
+        return;
+      }
+
+      const actions = {
+        clear,
+        backspace,
+        percent,
+        sign,
+        decimal,
+        equals
+      };
+
+      actions[button.dataset.action]?.();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (/^[0-9]$/.test(event.key)) number(event.key);
+      else if (["+", "-", "*", "/"].includes(event.key)) {
+        chooseOperator(event.key);
+      } else if (event.key === "Enter" || event.key === "=") {
+        equals();
+      } else if (event.key === ".") decimal();
+      else if (event.key === "Backspace") backspace();
+      else if (event.key === "Escape") clear();
+      else return;
+
+      event.preventDefault();
+    });
+  </script>
+</body>
+</html>
